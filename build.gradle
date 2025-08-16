@@ -1,0 +1,232 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.2.4' apply false
+    id 'io.spring.dependency-management' version '1.1.4' apply false
+    id 'org.liquibase.gradle' version '2.2.1' apply false
+}
+
+allprojects {
+    group = 'com.paypulse'
+    version = '1.0.0'
+    
+    repositories {
+        mavenCentral()
+        maven { url 'https://repo.spring.io/milestone' }
+        maven { url 'https://repo.spring.io/snapshot' }
+    }
+}
+
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'org.springframework.boot'
+    apply plugin: 'io.spring.dependency-management'
+    
+    java {
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
+    }
+    
+    configurations {
+        compileOnly {
+            extendsFrom annotationProcessor
+        }
+    }
+    
+    dependencyManagement {
+        imports {
+            mavenBom "org.springframework.cloud:spring-cloud-dependencies:2023.0.0"
+        }
+    }
+    
+    dependencies {
+        implementation 'org.projectlombok:lombok'
+        annotationProcessor 'org.projectlombok:lombok'
+        testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    }
+    
+    tasks.named('test') {
+        useJUnitPlatform()
+    }
+    
+}
+
+task cleanAll(type: Delete) {
+    delete rootProject.buildDir
+    delete subprojects*.buildDir
+}
+
+task buildAll {
+    dependsOn subprojects*.build
+}
+
+task testAll {
+    dependsOn subprojects*.test
+}
+
+task bootRunAll {
+    dependsOn subprojects*.bootRun
+}
+
+task buildServices {
+    dependsOn ':paypulse-common:build'
+    dependsOn ':auth-service:build'
+    dependsOn ':wallet-service:build'
+    dependsOn ':transaction-service:build'
+    dependsOn ':notification-service:build'
+    dependsOn ':analytics-service:build'
+    dependsOn ':api-gateway:build'
+}
+
+task cleanServices {
+    dependsOn ':paypulse-common:clean'
+    dependsOn ':auth-service:clean'
+    dependsOn ':wallet-service:clean'
+    dependsOn ':transaction-service:clean'
+    dependsOn ':notification-service:clean'
+    dependsOn ':analytics-service:clean'
+    dependsOn ':api-gateway:clean'
+}
+
+task dockerBuildAll {
+    dependsOn buildServices
+    doLast {
+        println "Все сервисы собраны. Теперь можно запустить docker-compose up -d"
+    }
+}
+
+task dockerUp {
+    doLast {
+        exec {
+            commandLine 'docker-compose', 'up', '-d'
+        }
+    }
+}
+
+task dockerDown {
+    doLast {
+        exec {
+            commandLine 'docker-compose', 'down'
+        }
+    }
+}
+
+task dockerRestart {
+    dependsOn dockerDown
+    dependsOn dockerUp
+}
+
+task dockerLogs {
+    doLast {
+        exec {
+            commandLine 'docker-compose', 'logs', '-f'
+        }
+    }
+}
+
+task dockerStatus {
+    doLast {
+        exec {
+            commandLine 'docker-compose', 'ps'
+        }
+    }
+}
+
+task liquibaseUpdateAll {
+    dependsOn ':auth-service:update'
+    dependsOn ':wallet-service:update'
+    dependsOn ':transaction-service:update'
+    dependsOn ':notification-service:update'
+    dependsOn ':analytics-service:update'
+    doLast {
+        println "Все базы данных обновлены через Liquibase"
+    }
+}
+
+task liquibaseStatusAll {
+    dependsOn ':auth-service:status'
+    dependsOn ':wallet-service:status'
+    dependsOn ':transaction-service:status'
+    dependsOn ':notification-service:status'
+    dependsOn ':analytics-service:status'
+    doLast {
+        println "Статус всех баз данных проверен"
+    }
+}
+
+task devBuild {
+    dependsOn cleanServices
+    dependsOn buildServices
+    doLast {
+        println "Проект очищен и пересобран для разработки"
+    }
+}
+
+task quickBuild {
+    dependsOn buildServices
+    doLast {
+        println "Быстрая сборка завершена"
+    }
+}
+
+task healthCheck {
+    doLast {
+        println "Проверка здоровья проекта..."
+        exec {
+            commandLine 'docker-compose', 'ps'
+        }
+    }
+}
+
+task logsAll {
+    doLast {
+        exec {
+            commandLine 'docker-compose', 'logs', '--tail=100'
+        }
+    }
+}
+
+task projectHelp {
+    group = 'help'
+    description = 'Показывает справку по всем доступным задачам'
+    
+    doLast {
+        println """
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                           PAYPULSE GRADLE TASKS                              ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║                                                                              ║
+║  🏗️  ОСНОВНЫЕ ЗАДАЧИ:                                                       ║
+║     buildServices     - Собрать все сервисы                                  ║
+║     cleanServices     - Очистить все сервисы                                ║
+║     testAll           - Запустить все тесты                                 ║
+║     bootRunAll        - Запустить все сервисы                               ║
+║                                                                              ║
+║  🐳  DOCKER ЗАДАЧИ:                                                          ║
+║     dockerBuildAll    - Собрать и подготовить для Docker                    ║
+║     dockerUp          - Запустить Docker Compose                            ║
+║     dockerDown        - Остановить Docker Compose                           ║
+║     dockerRestart     - Перезапустить Docker Compose                        ║
+║     dockerStatus      - Показать статус контейнеров                         ║
+║     dockerLogs        - Показать логи контейнеров                           ║
+║                                                                              ║
+║  🗄️  LIQUIBASE ЗАДАЧИ:                                                       ║
+║     liquibaseUpdateAll - Обновить все базы данных                           ║
+║     liquibaseStatusAll - Проверить статус всех БД                           ║
+║                                                                              ║
+║  🛠️  РАЗРАБОТКА:                                                             ║
+║     devBuild          - Полная пересборка для разработки                    ║
+║     quickBuild        - Быстрая сборка                                      ║
+║                                                                              ║
+║  📊  МОНИТОРИНГ:                                                             ║
+║     healthCheck       - Проверить здоровье проекта                          ║
+║     logsAll           - Показать логи всех сервисов                         ║
+║                                                                              ║
+║  📋  ПОЛЕЗНЫЕ КОМАНДЫ:                                                      ║
+║     ./gradlew tasks   - Показать все задачи                                ║
+║     ./gradlew projectHelp - Показать эту справку                            ║
+║     ./gradlew :service:build - Собрать конкретный сервис                    ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+        """
+    }
+}

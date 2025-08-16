@@ -1,0 +1,9 @@
+rootProject.name = 'paypulse'
+
+include 'paypulse-common'
+include 'auth-service'
+include 'wallet-service'
+include 'transaction-service'
+include 'notification-service'
+include 'analytics-service'
+include 'api-gateway'

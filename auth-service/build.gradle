@@ -1,0 +1,74 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.2.4'
+    id 'io.spring.dependency-management' version '1.1.4'
+    id 'org.liquibase.gradle' version '2.2.1'
+}
+
+group = 'com.paypulse'
+version = '1.0.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+    liquibaseRuntime.extendsFrom runtimeOnly
+    liquibaseRuntime.extendsFrom implementation
+}
+
+dependencies {
+    liquibaseRuntime 'info.picocli:picocli:4.7.5'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation project(':paypulse-common')
+    
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.postgresql:postgresql'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    
+    implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
+    implementation 'io.jsonwebtoken:jjwt-impl:0.11.5'
+    implementation 'io.jsonwebtoken:jjwt-jackson:0.11.5'
+    
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.2.0'
+    implementation 'io.micrometer:micrometer-registry-prometheus'
+    implementation 'org.liquibase:liquibase-core'
+    
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+bootJar.enabled = true
+jar.enabled = false
+
+liquibase {
+    activities {
+        main {
+            changelogFile 'src/main/resources/db/changelog/db.changelog-master.yaml'
+            url project.hasProperty('dbUrl') ? project.property('dbUrl') : 'jdbc:postgresql://localhost:5433/auth'
+            username project.hasProperty('dbUsername') ? project.property('dbUsername') : 'auth_user'
+            password project.hasProperty('dbPassword') ? project.property('dbPassword') : 'auth_password'
+        }
+    }
+}
